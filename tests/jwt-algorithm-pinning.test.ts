@@ -1,12 +1,14 @@
 import jwt from "jsonwebtoken";
 import { issueSep10Token } from "../src/services/sep10";
 import { requireAuth } from "../src/middleware/auth";
+import { config } from "../src/config";
 
 jest.mock("../src/db", () => ({
   prisma: { revokedToken: { findFirst: jest.fn().mockResolvedValue(null) } },
 }));
 
-const secret = "synthetic-test-secret-not-a-real-credential";
+// The middleware verifies with the secret loaded by src/config at import time.
+const secret = config.jwtSecret;
 const claims = { sub: "GTESTACCOUNT", role: "player", jti: "unit-test-jti" };
 
 function requestFor(token: string): any {
@@ -17,13 +19,6 @@ function responseMock(): any {
 }
 
 describe("#1705 JWT algorithm pinning", () => {
-  beforeEach(() => {
-    process.env.JWT_SECRET = secret;
-  });
-  afterAll(() => {
-    delete process.env.JWT_SECRET;
-  });
-
   it("issues SEP-10 JWTs with an explicit HS256 header", () => {
     const token = issueSep10Token({ sub: claims.sub, role: claims.role }, secret);
     const decoded = jwt.decode(token, { complete: true });
